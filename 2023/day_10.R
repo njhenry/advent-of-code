@@ -10,7 +10,7 @@
 ## #######################################################################################
 
 ## SETUP FOR THE DAY
-library(httr); library(data.table); library(purrr); library(stringr)
+library(httr); library(data.table); library(stringr); library(sf)
 
 load_input_as_text <- function(day, year = 2023, cache_dir = Sys.getenv('AOC_CACHE')){
   cache_file <- glue::glue("{cache_dir}/{year}-12-{day}.txt")
@@ -67,7 +67,7 @@ get_new_direction <- function(start_dir, tile){
 num_steps <- 0
 pipes <- strsplit(input_list, split = '')
 y_position <- which(grepl('S', input_list))
-x_position <- regexpr('S', input_list[start_y])
+x_position <- regexpr('S', input_list[y_position])
 tile_position <- c(x_position, y_position)
 tile_val <- 'test'
 move_direction <- 'E'
@@ -85,27 +85,39 @@ while(tile_val != 'S'){
     move_direction <- get_new_direction(move_direction, tile_val)
   }
 }
-message(num_steps / 2)
+message("Part 1 solution: ", num_steps / 2)
 
 
 ## Part 2: lol let's use GIS
+
+# Create a list of all pipe coordinates and convert to a polygon
 xy_table <- data.table::data.table(
   x = c(all_x_vals, all_x_vals[1]), # Close the loop using the first point
   y = c(all_y_vals, all_y_vals[1]), 
-  skip = 1
+  skip = 1 # To be used later to exclude candidate points
 )
-
-candidate_points <- data.table::CJ(
-  x = seq_len(length(pipes[[1]])), y = seq_len(length(pipes))
-)[xy_table, skip := i.skip, on = c('x','y')][is.na(skip), ][, skip := NULL]
-xy_table[, skip := NULL]
-
 pipes_poly <- sf::st_polygon(list(as.matrix(xy_table))) |> sf::st_sfc() |> sf::st_sf()
+# Add a field to denote the spatial join later
 pipes_poly$intersection <- 1
-candidate_points <- candidate_points |>
+
+# Create a list of all candidate points
+# Drop points on the pipe edges
+candidate_points <- (
+  data.table::CJ(
+    x = seq_len(length(pipes[[1]])),
+    y = seq_len(length(pipes))
+  )
+  [xy_table, skip := i.skip, on = c('x','y')]
+  [is.na(skip), ]
+  [, skip := NULL]
+)
+xy_table[, skip := NULL]
+# Convert to spatial
+candidate_points_sf <- candidate_points |>
   sf::st_as_sf(coords = c('x','y'))
 
-tt <- sf::st_join(x = candidate_points, y = pipes_poly)
-num_inside <- sum(!is.na(tt$intersection))
+# Perform a spatial join
+num_inside <- sf::st_intersects(x = candidate_points_sf, y = pipes_poly, sparse = F)[, 1] |>
+  sum()
 
-message(num_inside)
+message("Part 2 solution: ", num_inside)
