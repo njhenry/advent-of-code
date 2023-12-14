@@ -114,16 +114,3 @@ cycle_idx <- (target - starting_iteration) %% period
 matching_sequence <- starting_iteration + cycle_idx
 p2_answer <- history_list[[matching_sequence]]$total_weight
 message(p2_answer)
-
-input_p2 <- c(
-  "O....#....",
-  "O.OO#....#",
-  ".....##...",
-  "OO.#O....O",
-  ".O.....O#.",
-  "O.#..O.#.#",
-  "..O..#O..O",
-  ".......O..",
-  "#....###..",
-  "#OO..#...."
-) |> strsplit(split = '') |> unlist() |> matrix(ncol = 10, byrow = TRUE)
