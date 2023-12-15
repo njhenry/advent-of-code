@@ -38,51 +38,52 @@ load_input_as_text <- function(day, year = 2023, cache_dir = Sys.getenv('AOC_CAC
 input <- load_input_as_text(day = 14) |> strsplit(split = '') |> do.call(what = 'rbind')
 
 # Iteratively move north
-calc_weight <- function(input){
-  n_rows <- nrow(input)
-  n_cols <- ncol(input)
-  max_row <- as.integer(input[1, ] != '.')
+tilt <- function(rocks_matrix){
+  n_rows <- nrow(rocks_matrix)
+  n_cols <- ncol(rocks_matrix)
+  max_row <- as.integer(rocks_matrix[1, ] != '.')
   for(row_i in seq(2, n_rows)){
     for(col_i in seq(1, n_cols)){
-      if(input[row_i, col_i] == 'O'){
+      if(rocks_matrix[row_i, col_i] == 'O'){
         max_row_val <- max_row[col_i]
         if(max_row_val < (row_i - 1)){
-          input[row_i, col_i] <- '.'
-          input[max_row_val + 1, col_i] <- 'O'
+          rocks_matrix[row_i, col_i] <- '.'
+          rocks_matrix[max_row_val + 1, col_i] <- 'O'
           max_row[col_i] <- max_row_val + 1
         } else {
           max_row[col_i] <- row_i
         }
-      } else if(input[row_i, col_i] == '#'){
+      } else if(rocks_matrix[row_i, col_i] == '#'){
           max_row[col_i] <- row_i
       }
     }
   }
-  # Calculate total weight
-  total_weight <- lapply(seq_len(n_rows), function(row_idx){
-    row_weight <- n_rows - row_idx + 1
-    return(sum(input[row_idx, ] == 'O') * row_weight)
-  }) |> unlist() |> sum()
-  return(list(output = input, total_weight = total_weight))
+  return(rocks_matrix)
 }
-p1_answer <- calc_weight(input)$total_weight
+
+# Function to calculate total weight
+get_total_weight <- function(rocks_matrix){
+  row_weights <- rocks_matrix |> nrow() |> seq_len() |> rev()
+  total_weight <- sum(
+    apply(rocks_matrix, function(row) sum(row == 'O'), MARGIN = 1) * row_weights
+  )
+  return(total_weight)
+}
+
+p1_answer <- input |> tilt() |> get_total_weight()
 message(p1_answer)
 
 # Function to rotate a list in the N-W-S-E direction
 rotate_cw <- function(x) t(apply(x, 2, rev))
 
-full_cycle <- function(input){
+full_cycle <- function(rocks_matrix){
   for(ii in 1:4){
-    output_list <- calc_weight(input)
-    input <- rotate_cw(output_list$output)
+    rocks_matrix <- rocks_matrix |> tilt() |> rotate_cw()
   }
-  total_weight <- lapply(seq_len(nrow(input)), function(row_idx){
-    row_weight <- nrow(input) - row_idx + 1
-    return(sum(input[row_idx, ] == 'O') * row_weight)
-  }) |> unlist() |> sum()
-  return(list(output = input, total_weight = total_weight))
+  return(rocks_matrix)
 }
 
+p2_start_time <- Sys.time()
 input_p2 <- load_input_as_text(day = 14) |> strsplit(split = '') |> do.call(what = 'rbind')
 history_list <- vector('list', length = 1e5)
 iteration <- 0
@@ -93,18 +94,18 @@ found_period <- FALSE
 while(!found_period){
   iteration <- iteration + 1
   message('.', appendLF = F)
-  history_list[[iteration]] <- full_cycle(input_p2)
-  input_p2 <- history_list[[iteration]]$output
+  input_p2 <- full_cycle(input_p2)
+  history_list[[iteration]] <- input_p2
   # Compare to all previous arrangements
   for(compare_iteration in seq_len(iteration - 1)){
-    if(all(history_list[[compare_iteration]]$output == input_p2)){
+    if(all(input_p2 == history_list[[compare_iteration]])){
       found_period <- TRUE
     }
   }
 }
 starting_iteration <- sapply(
   seq_len(iteration - 1),
-  function(ii) all(history_list[[ii]]$output == input_p2)
+  function(ii) all(history_list[[ii]] == input_p2)
 ) |> which()
 period <- iteration - starting_iteration
 
@@ -112,5 +113,6 @@ period <- iteration - starting_iteration
 target <- 1000000000
 cycle_idx <- (target - starting_iteration) %% period
 matching_sequence <- starting_iteration + cycle_idx
-p2_answer <- history_list[[matching_sequence]]$total_weight
+p2_answer <- history_list[[matching_sequence]] |> get_total_weight()
 message(p2_answer)
+message(Sys.time() - p2_start_time)
