@@ -70,23 +70,19 @@ valid_next_steps <- function(history){
   return(possible)
 }
 # Function to step histories
+# History resets whenever we turn
 step_histories <- function(histories, next_steps){
+  last_direction <- substr(histories, nchar(histories), nchar(histories))
   new_histories <- paste0(histories, next_steps)
+  to_swap <- (last_direction != next_steps)
+  new_histories[to_swap] <- next_steps[to_swap]
   to_shorten <- (nchar(new_histories) > 3)
   new_histories[to_shorten] <- gsub('^.', '', new_histories[to_shorten])
   return(new_histories)
 }
 
-# Get all valid histories
-all_histories <- directions
-for(d1 in directions){
-  dir_2 <- valid_next_steps(d1)
-  all_histories <- c(all_histories, paste(d1, dir_2, sep = ''))
-  for(d2 in dir_2){
-    dir_3 <- valid_next_steps(c(d1, d2))
-    all_histories <- c(all_histories, paste(d1, d2, dir_3, sep = ''))
-  }
-}
+all_histories <- c('N', 'NN', 'NNN', 'S', 'SS', 'SSS', 'E', 'EE', 'EEE', 'W', 'WW', 'WWW')
+
 # Create a table expanding all possible histories for each grid cell
 grid_histories_dt <- merge(
   x = base_costs_dt[, merge_on := 1 ],
